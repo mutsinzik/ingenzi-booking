@@ -145,9 +145,10 @@ export function getTimezoneOffsetString(date: Date, timezone: string): string {
  * the correct offset, e.g. "2026-10-13T14:00:00+02:00".
  */
 export function localToIso(dateStr: string, timeStr: string, timezone: string): string {
-  const guess = new Date(`${dateStr}T${timeStr}:00Z`);
+  const paddedTime = timeStr.length === 5 ? `${timeStr}:00` : timeStr;
+  const guess = new Date(`${dateStr}T${paddedTime}Z`);
   const offset = getTimezoneOffsetString(guess, timezone);
-  return `${dateStr}T${timeStr}:00${offset}`;
+  return `${dateStr}T${paddedTime}${offset}`;
 }
 
 /**

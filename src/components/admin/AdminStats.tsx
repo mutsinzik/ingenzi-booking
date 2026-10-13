@@ -74,7 +74,9 @@ function getTimeZoneOffsetMs(date: Date, timezone: string): number {
 }
 
 function localDateTimeToUtc(date: string, time: string, timezone: string): Date {
-  const guess = new Date(`${date}T${time}:00Z`);
+  const paddedTime = time.length === 5 ? `${time}:00` : time;
+  const guess = new Date(`${date}T${paddedTime}Z`);
+  if (isNaN(guess.getTime())) throw new Error(`Invalid date: ${date}T${paddedTime}Z`);
   return new Date(guess.getTime() - getTimeZoneOffsetMs(guess, timezone));
 }
 
