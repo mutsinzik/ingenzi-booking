@@ -1,0 +1,13 @@
+project_id = "court-booking"
+
+[functions.create-booking]
+verify_jwt = false
+entrypoint = "./functions/create-booking/index.ts"
+
+[functions.cancel-booking]
+verify_jwt = false
+entrypoint = "./functions/cancel-booking/index.ts"
+
+[functions.lookup-booking]
+verify_jwt = false
+entrypoint = "./functions/lookup-booking/index.ts"
