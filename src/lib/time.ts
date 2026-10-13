@@ -107,3 +107,61 @@ export function isToday(date: Date): boolean {
 
 export const WEEKDAY_NAMES = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
 export const WEEKDAY_NAMES_FULL = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
+
+/**
+ * Returns the IANA timezone offset string for a given date and timezone,
+ * e.g. "+02:00" or "-05:00". Uses Intl to handle DST correctly.
+ */
+export function getTimezoneOffsetString(date: Date, timezone: string): string {
+  const parts = new Intl.DateTimeFormat('en-US', {
+    timeZone: timezone,
+    year: 'numeric',
+    month: '2-digit',
+    day: '2-digit',
+    hour: '2-digit',
+    minute: '2-digit',
+    second: '2-digit',
+    hourCycle: 'h23',
+  }).formatToParts(date);
+  const values = Object.fromEntries(parts.map((p) => [p.type, p.value]));
+  const asUtc = Date.UTC(
+    Number(values.year),
+    Number(values.month) - 1,
+    Number(values.day),
+    Number(values.hour),
+    Number(values.minute),
+    Number(values.second),
+  );
+  const offsetMs = asUtc - date.getTime();
+  const sign = offsetMs >= 0 ? '+' : '-';
+  const absMs = Math.abs(offsetMs);
+  const hours = String(Math.floor(absMs / 3600000)).padStart(2, '0');
+  const minutes = String(Math.floor((absMs % 3600000) / 60000)).padStart(2, '0');
+  return `${sign}${hours}:${minutes}`;
+}
+
+/**
+ * Converts a local date+time in the given timezone to an ISO string with
+ * the correct offset, e.g. "2026-10-13T14:00:00+02:00".
+ */
+export function localToIso(dateStr: string, timeStr: string, timezone: string): string {
+  const guess = new Date(`${dateStr}T${timeStr}:00Z`);
+  const offset = getTimezoneOffsetString(guess, timezone);
+  return `${dateStr}T${timeStr}:00${offset}`;
+}
+
+/**
+ * Returns the YYYY-MM-DD date string for a given Date in the specified timezone.
+ */
+export function getDateInTimezone(date: Date, timezone: string): string {
+  const parts = new Intl.DateTimeFormat('en-US', {
+    timeZone: timezone,
+    year: 'numeric',
+    month: '2-digit',
+    day: '2-digit',
+  }).formatToParts(date);
+  const y = parts.find((p) => p.type === 'year')?.value ?? '0';
+  const m = parts.find((p) => p.type === 'month')?.value ?? '0';
+  const d = parts.find((p) => p.type === 'day')?.value ?? '0';
+  return `${y}-${m}-${d}`;
+}

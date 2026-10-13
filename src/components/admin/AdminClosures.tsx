@@ -1,11 +1,11 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useState } from 'react';
 import { supabase, type Closure } from '@/lib/supabase';
 import { useConfig } from '@/hooks/useConfig';
-import { formatDateTimeFull } from '@/lib/time';
+import { formatDateTimeFull, getTimezoneOffsetString } from '@/lib/time';
 import { Loader2, Trash2, Plus } from 'lucide-react';
 
 export function AdminClosures() {
-  const { closures, reload } = useConfig();
+  const { closures, reload, settings } = useConfig();
   const [adding, setAdding] = useState(false);
   const [startDate, setStartDate] = useState('');
   const [startTime, setStartTime] = useState('00:00');
@@ -21,8 +21,10 @@ export function AdminClosures() {
       setError('Please set start and end dates');
       return;
     }
-    const startsAt = `${startDate}T${startTime}:00+02:00`;
-    const endsAt = `${endDate}T${endTime}:00+02:00`;
+    const tz = settings?.timezone ?? 'Africa/Kigali';
+    const offset = getTimezoneOffsetString(new Date(), tz);
+    const startsAt = `${startDate}T${startTime}:00${offset}`;
+    const endsAt = `${endDate}T${endTime}:00${offset}`;
     if (new Date(endsAt) <= new Date(startsAt)) {
       setError('End must be after start');
       return;
@@ -51,7 +53,7 @@ export function AdminClosures() {
   };
 
   const formatClosureDate = (startsAt: string, endsAt: string): string => {
-    const tz = 'Africa/Kigali';
+    const tz = settings?.timezone ?? 'Africa/Kigali';
     const start = new Date(startsAt);
     const end = new Date(endsAt);
     const sameDay = start.toDateString() === end.toDateString();

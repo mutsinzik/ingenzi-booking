@@ -1,7 +1,7 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import { supabase, type Booking } from '@/lib/supabase';
 import { adminCreateBooking } from '@/lib/api';
-import { formatDateTimeFull } from '@/lib/time';
+import { formatDateTimeFull, getTimezoneOffsetString } from '@/lib/time';
 import { useConfig } from '@/hooks/useConfig';
 import { Search, Loader2, Ban, Plus, AlertCircle, X, ChevronLeft, ChevronRight } from 'lucide-react';
 
@@ -20,19 +20,36 @@ export function AdminBookings() {
 
   const tz = settings?.timezone ?? 'Africa/Kigali';
 
+  // Debounce search input so we don't query the DB on every keystroke
+  const [debouncedSearch, setDebouncedSearch] = useState('');
+  const searchTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  useEffect(() => {
+    if (searchTimerRef.current) clearTimeout(searchTimerRef.current);
+    searchTimerRef.current = setTimeout(() => {
+      setDebouncedSearch(search.trim());
+    }, 300);
+    return () => {
+      if (searchTimerRef.current) clearTimeout(searchTimerRef.current);
+    };
+  }, [search]);
+
   const load = useCallback(async () => {
     setLoading(true);
     setCurrentPage(1);
-    let query = supabase.from('bookings').select('*').order('starts_at', { ascending: false });
+    let query = supabase.from('bookings')
+      .select('id, reference, booker_name, booker_email, booker_phone, starts_at, ends_at, status, created_by_admin, cancelled_at')
+      .order('starts_at', { ascending: false });
 
     if (statusFilter !== 'all') {
       query = query.eq('status', statusFilter);
     }
+    const offset = getTimezoneOffsetString(new Date(), tz);
     if (dateFrom) {
-      query = query.gte('starts_at', `${dateFrom}T00:00:00+02:00`);
+      query = query.gte('starts_at', `${dateFrom}T00:00:00${offset}`);
     }
     if (dateTo) {
-      query = query.lte('starts_at', `${dateTo}T23:59:59+02:00`);
+      query = query.lte('starts_at', `${dateTo}T23:59:59${offset}`);
     }
 
     const { data, error } = await query.limit(200);
@@ -40,8 +57,8 @@ export function AdminBookings() {
       console.error('Failed to load bookings:', error);
     } else {
       let filtered = (data ?? []) as Booking[];
-      if (search.trim()) {
-        const q = search.toLowerCase().trim();
+      if (debouncedSearch) {
+        const q = debouncedSearch.toLowerCase();
         filtered = filtered.filter(
           (b) =>
             b.booker_name.toLowerCase().includes(q) ||
@@ -53,7 +70,7 @@ export function AdminBookings() {
       setBookings(filtered);
     }
     setLoading(false);
-  }, [statusFilter, dateFrom, dateTo, search]);
+  }, [statusFilter, dateFrom, dateTo, debouncedSearch, tz]);
 
   useEffect(() => {
     load();
@@ -331,6 +348,7 @@ export function AdminBookings() {
 }
 
 function CreateBookingForm({
+  timezone,
   courtName,
   onClose,
   onSuccess,
@@ -358,8 +376,9 @@ function CreateBookingForm({
       return;
     }
 
-    const startsAt = `${date}T${startTime}:00+02:00`;
-    const endsAt = `${date}T${endTime}:00+02:00`;
+    const offset = getTimezoneOffsetString(new Date(), timezone);
+    const startsAt = `${date}T${startTime}:00${offset}`;
+    const endsAt = `${date}T${endTime}:00${offset}`;
 
     setSubmitting(true);
     try {

@@ -4,7 +4,7 @@ import { Loader2, Save } from 'lucide-react';
 
 type AdminSettingsProps = {
   settings: Settings | null;
-  onUpdate: (s: Settings) => void;
+  onUpdate: () => void;
 };
 
 export function AdminSettings({ settings, onUpdate }: AdminSettingsProps) {
@@ -45,7 +45,7 @@ export function AdminSettings({ settings, onUpdate }: AdminSettingsProps) {
         })
         .eq('id', 1);
       if (updateError) throw updateError;
-      onUpdate(form);
+      onUpdate();
       setSaved(true);
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to save settings');

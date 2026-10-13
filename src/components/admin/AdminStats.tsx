@@ -134,10 +134,14 @@ export function AdminStats() {
       }
 
       const week = getWeekForTimezone(new Date(), settings.timezone);
+      const weekStartIso = `${week.start}T00:00:00Z`;
+      const weekEndIso = `${week.end}T00:00:00Z`;
       const [bookingsResult, hoursResult, closuresResult] = await Promise.all([
-        supabase.from('bookings').select('starts_at, ends_at, status, cancelled_at'),
+        supabase.from('bookings')
+          .select('starts_at, ends_at, status, cancelled_at')
+          .or(`starts_at.gte.${weekStartIso},starts_at.lt.${weekEndIso},cancelled_at.gte.${weekStartIso},cancelled_at.lt.${weekEndIso}`),
         supabase.from('operating_hours').select('day_of_week, is_open, open_time, close_time'),
-        supabase.from('closures').select('starts_at, ends_at'),
+        supabase.from('closures').select('starts_at, ends_at').gte('ends_at', weekStartIso).lt('starts_at', weekEndIso),
       ]);
 
       if (bookingsResult.error || hoursResult.error || closuresResult.error) {

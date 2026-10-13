@@ -1,5 +1,6 @@
 import { useState, useEffect, useCallback } from 'react';
-import { supabase, type Settings } from '@/lib/supabase';
+import { supabase } from '@/lib/supabase';
+import { useConfig } from '@/hooks/useConfig';
 import { Loader2, LogOut, Calendar, List, Clock, Ban, Sliders, BarChart3 } from 'lucide-react';
 import { AdminBookings } from '@/components/admin/AdminBookings';
 import { AdminDayView } from '@/components/admin/AdminDayView';
@@ -21,7 +22,7 @@ export function AdminPage() {
   const [authError, setAuthError] = useState<string | null>(null);
   const [signingIn, setSigningIn] = useState(false);
   const [tab, setTab] = useState<Tab>('bookings');
-  const [settings, setSettings] = useState<Settings | null>(null);
+  const { settings, reload } = useConfig();
 
   useEffect(() => {
     supabase.auth.getSession().then(({ data }) => {
@@ -81,11 +82,9 @@ export function AdminPage() {
 
   useEffect(() => {
     if (isAdmin) {
-      supabase.from('settings').select('*').eq('id', 1).maybeSingle().then(({ data }) => {
-        if (data) setSettings(data as Settings);
-      });
+      reload();
     }
-  }, [isAdmin]);
+  }, [isAdmin, reload]);
 
   if (loading) {
     return (
@@ -238,7 +237,7 @@ export function AdminPage() {
         {tab === 'day' && <AdminDayView settings={settings} />}
         {tab === 'hours' && <AdminHours />}
         {tab === 'closures' && <AdminClosures />}
-        {tab === 'settings' && <AdminSettings settings={settings} onUpdate={setSettings} />}
+        {tab === 'settings' && <AdminSettings settings={settings} onUpdate={reload} />}
       </main>
     </div>
   );

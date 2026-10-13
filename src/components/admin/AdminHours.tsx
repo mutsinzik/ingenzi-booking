@@ -22,42 +22,44 @@ export function AdminHours() {
   };
 
   const checkConflicts = async (): Promise<Booking[]> => {
+    const { data } = await supabase
+      .from('bookings')
+      .select('id, reference, booker_name, starts_at, status')
+      .eq('status', 'confirmed')
+      .gte('starts_at', new Date().toISOString());
+
+    if (!data) return [];
+
     const allConflicts: Booking[] = [];
+    const futureBookings = data as Pick<Booking, 'id' | 'reference' | 'booker_name' | 'starts_at' | 'status'>[];
+
     for (const h of hours) {
-      if (!h.is_open) {
-        const { data } = await supabase
-          .from('bookings')
-          .select('*')
-          .eq('status', 'confirmed')
-          .gte('starts_at', new Date().toISOString());
-        if (data) {
-          for (const b of data as Booking[]) {
-            const bDate = new Date(b.starts_at);
-            if (bDate.getDay() === h.day_of_week) {
-              allConflicts.push(b);
-            }
-          }
-        }
-      } else {
-        const { data } = await supabase
-          .from('bookings')
-          .select('*')
-          .eq('status', 'confirmed')
-          .gte('starts_at', new Date().toISOString());
-        if (data) {
-          for (const b of data as Booking[]) {
-            const bDate = new Date(b.starts_at);
-            if (bDate.getDay() === h.day_of_week) {
-              const bTime = bDate.toTimeString().slice(0, 5);
-              if (bTime < h.open_time || bTime >= h.close_time) {
-                allConflicts.push(b);
-              }
+      for (const b of futureBookings) {
+        const bDate = new Date(b.starts_at);
+        if (bDate.getDay() === h.day_of_week) {
+          if (!h.is_open) {
+            allConflicts.push(b as Booking);
+          } else {
+            const bTime = bDate.toTimeString().slice(0, 5);
+            if (bTime < h.open_time || bTime >= h.close_time) {
+              allConflicts.push(b as Booking);
             }
           }
         }
       }
     }
     return allConflicts;
+  };
+
+  const saveHours = async (): Promise<void> => {
+    await Promise.all(
+      hours.map((h) =>
+        supabase
+          .from('operating_hours')
+          .update({ is_open: h.is_open, open_time: h.open_time, close_time: h.close_time })
+          .eq('day_of_week', h.day_of_week)
+      )
+    );
   };
 
   const handleSave = async () => {
@@ -75,13 +77,7 @@ export function AdminHours() {
     }
 
     try {
-      for (const h of hours) {
-        const { error } = await supabase
-          .from('operating_hours')
-          .update({ is_open: h.is_open, open_time: h.open_time, close_time: h.close_time })
-          .eq('day_of_week', h.day_of_week);
-        if (error) throw error;
-      }
+      await saveHours();
       setSaved(true);
       await reload();
     } catch (err) {
@@ -95,13 +91,7 @@ export function AdminHours() {
     setSaving(true);
     setConflicts([]);
     try {
-      for (const h of hours) {
-        const { error } = await supabase
-          .from('operating_hours')
-          .update({ is_open: h.is_open, open_time: h.open_time, close_time: h.close_time })
-          .eq('day_of_week', h.day_of_week);
-        if (error) throw error;
-      }
+      await saveHours();
       setSaved(true);
       await reload();
     } catch (err) {

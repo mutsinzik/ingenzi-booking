@@ -1,10 +1,10 @@
-import { useState, useEffect, useCallback } from 'react';
-import { supabase, type Booking, type Settings, type Slot } from '@/lib/supabase';
+import { useState, useEffect, useCallback, useMemo } from 'react';
+import { supabase, type Settings, type Slot } from '@/lib/supabase';
 import { fetchAvailability } from '@/lib/api';
 import { useConfig } from '@/hooks/useConfig';
 import {
   startOfWeek, addDays, addWeeks, toDateString, formatDateLabel,
-  isToday, WEEKDAY_NAMES,
+  isToday, WEEKDAY_NAMES, getDateInTimezone,
 } from '@/lib/time';
 import { ChevronLeft, ChevronRight } from 'lucide-react';
 
@@ -12,11 +12,19 @@ type AdminDayViewProps = {
   settings: Settings | null;
 };
 
+type DayBooking = {
+  reference: string;
+  booker_name: string;
+  starts_at: string;
+  ends_at: string;
+  status: string;
+};
+
 export function AdminDayView({ settings }: AdminDayViewProps) {
   const { operatingHours, closures } = useConfig();
   const [weekStart, setWeekStart] = useState(() => startOfWeek(new Date()));
   const [slots, setSlots] = useState<Slot[]>([]);
-  const [bookings, setBookings] = useState<Booking[]>([]);
+  const [bookings, setBookings] = useState<DayBooking[]>([]);
   const [loading, setLoading] = useState(true);
 
   const tz = settings?.timezone ?? 'Africa/Kigali';
@@ -31,7 +39,7 @@ export function AdminDayView({ settings }: AdminDayViewProps) {
       fetchAvailability(startDate, endDate),
       supabase
         .from('bookings')
-        .select('*')
+        .select('reference, booker_name, starts_at, ends_at, status')
         .gte('starts_at', `${startDate}T00:00:00Z`)
         .lte('starts_at', weekEndIso)
         .order('starts_at'),
@@ -39,7 +47,7 @@ export function AdminDayView({ settings }: AdminDayViewProps) {
 
     setSlots(slotsData);
     if (!bookingsData.error && bookingsData.data) {
-      setBookings(bookingsData.data as Booking[]);
+      setBookings(bookingsData.data as DayBooking[]);
     }
     setLoading(false);
   }, [weekStart]);
@@ -50,13 +58,20 @@ export function AdminDayView({ settings }: AdminDayViewProps) {
 
   const days = Array.from({ length: 7 }, (_, i) => addDays(weekStart, i));
 
-  const getBookingsForDay = (date: Date): Booking[] => {
-    const dateStr = toDateString(date);
-    return bookings.filter((b) => {
-      const bDate = new Date(b.starts_at);
-      const bDateStr = toDateString(bDate);
-      return bDateStr === dateStr;
-    });
+  // Build a Map of confirmed bookings keyed by starts_at timestamp for O(1) lookup
+  const bookingByStart = useMemo(() => {
+    const map = new Map<string, DayBooking>();
+    for (const b of bookings) {
+      if (b.status === 'confirmed') {
+        map.set(new Date(b.starts_at).getTime().toString(), b);
+      }
+    }
+    return map;
+  }, [bookings]);
+
+  const getBookingsForDay = (date: Date): DayBooking[] => {
+    const dateStr = getDateInTimezone(date, tz);
+    return bookings.filter((b) => getDateInTimezone(new Date(b.starts_at), tz) === dateStr);
   };
 
   const getSlotsForDay = (date: Date): Slot[] => {
@@ -64,12 +79,8 @@ export function AdminDayView({ settings }: AdminDayViewProps) {
     return slots.filter((s) => s.slot_date === dateStr);
   };
 
-  const getBookingForSlot = (slot: Slot): Booking | undefined => {
-    return bookings.find(
-      (b) =>
-        b.status === 'confirmed' &&
-        new Date(b.starts_at).getTime() === new Date(slot.starts_at).getTime(),
-    );
+  const getBookingForSlot = (slot: Slot): DayBooking | undefined => {
+    return bookingByStart.get(new Date(slot.starts_at).getTime().toString());
   };
 
   const formatSlotTime = (startsAt: string): string => {
