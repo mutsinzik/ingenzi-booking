@@ -105,6 +105,17 @@ export function isToday(date: Date): boolean {
   return isSameDay(date, new Date());
 }
 
+const FULL_DAY_TOLERANCE_MS = 60_000;
+
+export function closureCoversWholeDay(startsAt: string, endsAt: string, day: Date): boolean {
+  const dayStart = new Date(day);
+  dayStart.setHours(0, 0, 0, 0);
+  const dayEnd = new Date(dayStart);
+  dayEnd.setDate(dayEnd.getDate() + 1);
+  return new Date(startsAt).getTime() <= dayStart.getTime() + FULL_DAY_TOLERANCE_MS &&
+    new Date(endsAt).getTime() >= dayEnd.getTime() - FULL_DAY_TOLERANCE_MS;
+}
+
 export const WEEKDAY_NAMES = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
 export const WEEKDAY_NAMES_FULL = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
 
