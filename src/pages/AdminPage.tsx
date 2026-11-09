@@ -1,17 +1,18 @@
 import { useState, useEffect, useCallback } from 'react';
 import { supabase } from '@/lib/supabase';
 import { useConfig } from '@/hooks/useConfig';
-import { Loader2, LogOut, Calendar, List, Clock, Ban, Sliders, BarChart3 } from 'lucide-react';
+import { Loader2, LogOut, Calendar, List, Clock, Ban, Sliders, BarChart3, CalendarRange } from 'lucide-react';
 import { AdminBookings } from '@/components/admin/AdminBookings';
 import { AdminDayView } from '@/components/admin/AdminDayView';
 import { AdminHours } from '@/components/admin/AdminHours';
 import { AdminClosures } from '@/components/admin/AdminClosures';
+import { AdminPrograms } from '@/components/admin/AdminPrograms';
 import { AdminSettings } from '@/components/admin/AdminSettings';
 import { AdminStats } from '@/components/admin/AdminStats';
 import { navigate } from '@/hooks/useRouter';
 import { ArrowLeft } from 'lucide-react';
 
-type Tab = 'bookings' | 'day' | 'hours' | 'closures' | 'settings';
+type Tab = 'bookings' | 'day' | 'hours' | 'closures' | 'programs' | 'settings';
 
 export function AdminPage() {
   const [session, setSession] = useState<{ user: { id: string; email?: string } } | null>(null);
@@ -177,6 +178,7 @@ export function AdminPage() {
     { id: 'day', label: 'Day view', icon: Calendar },
     { id: 'hours', label: 'Hours', icon: Clock },
     { id: 'closures', label: 'Closures', icon: Ban },
+    { id: 'programs', label: 'Programs', icon: CalendarRange },
     { id: 'settings', label: 'Settings', icon: Sliders },
   ];
 
@@ -237,6 +239,7 @@ export function AdminPage() {
         {tab === 'day' && <AdminDayView settings={settings} />}
         {tab === 'hours' && <AdminHours />}
         {tab === 'closures' && <AdminClosures />}
+        {tab === 'programs' && <AdminPrograms />}
         {tab === 'settings' && <AdminSettings settings={settings} onUpdate={reload} />}
       </main>
     </div>
