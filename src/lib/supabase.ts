@@ -50,6 +50,20 @@ export type Closure = {
   starts_at: string;
   ends_at: string;
   reason: string | null;
+  program_block_id: string | null;
+  created_at: string;
+};
+
+export type ProgramBlock = {
+  id: string;
+  name: string;
+  weekday: number;
+  start_time: string;
+  end_time: string;
+  last_occurrence_start_time: string | null;
+  last_occurrence_end_time: string | null;
+  first_date: string;
+  last_date: string;
   created_at: string;
 };
 
