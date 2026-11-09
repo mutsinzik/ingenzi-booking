@@ -4,7 +4,7 @@ import { fetchAvailability } from '@/lib/api';
 import { useConfig } from '@/hooks/useConfig';
 import {
   startOfWeek, addDays, addWeeks, toDateString, formatDateLabel,
-  isToday, WEEKDAY_NAMES, getDateInTimezone,
+  isToday, WEEKDAY_NAMES, getDateInTimezone, closureCoversWholeDay,
 } from '@/lib/time';
 import { ChevronLeft, ChevronRight } from 'lucide-react';
 
@@ -130,14 +130,8 @@ export function AdminDayView({ settings }: AdminDayViewProps) {
             const hours = operatingHours.find((h) => h.day_of_week === dow);
             const daySlots = getSlotsForDay(date);
             const dayBookings = getBookingsForDay(date);
-            const dayClosures = closures.filter((c) => {
-              const cStart = new Date(c.starts_at);
-              const cEnd = new Date(c.ends_at);
-              const dayEnd = new Date(date);
-              dayEnd.setHours(23, 59, 59, 999);
-              return cStart <= dayEnd && cEnd >= date;
-            });
-            const isClosed = !hours?.is_open || dayClosures.length > 0;
+            const fullDayClosure = closures.find((c) => closureCoversWholeDay(c.starts_at, c.ends_at, date));
+            const isClosed = !hours?.is_open || !!fullDayClosure;
 
             return (
               <div
@@ -153,8 +147,8 @@ export function AdminDayView({ settings }: AdminDayViewProps) {
                 {isClosed ? (
                   <div className="p-4 text-center">
                     <span className="text-xs text-gray-400 uppercase">Closed</span>
-                    {dayClosures[0]?.reason && (
-                      <p className="text-xs text-gray-400 mt-1">{dayClosures[0].reason}</p>
+                    {fullDayClosure?.reason && (
+                      <p className="text-xs text-gray-400 mt-1">{fullDayClosure.reason}</p>
                     )}
                   </div>
                 ) : daySlots.length === 0 ? (
