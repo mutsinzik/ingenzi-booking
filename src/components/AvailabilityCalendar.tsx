@@ -4,7 +4,7 @@ import { fetchAvailability, fetchSlotBookers } from '@/lib/api';
 import { useConfig } from '@/hooks/useConfig';
 import {
   startOfWeek, addDays, addWeeks, toDateString, formatDateLabel,
-  isToday, WEEKDAY_NAMES, getHourFromTimeStr,
+  isToday, WEEKDAY_NAMES, getHourFromTimeStr, closureCoversWholeDay,
 } from '@/lib/time';
 import { ChevronLeft, ChevronRight, Calendar, User } from 'lucide-react';
 
@@ -91,22 +91,13 @@ export function AvailabilityCalendar({ onSelectSlot }: CalendarProps) {
       const daySlotsByDate = slots.filter((s) => s.slot_date === dateStr);
       const allDaySlots = daySlots.length > 0 ? daySlots : daySlotsByDate;
 
-      const dayClosures = closures.filter((c) => {
-        const cStart = new Date(c.starts_at);
-        const cEnd = new Date(c.ends_at);
-        const dayEnd = new Date(date);
-        dayEnd.setHours(23, 59, 59, 999);
-        return cStart <= dayEnd && cEnd >= date;
-      });
-
-      const isClosed = !hours?.is_open || dayClosures.length > 0;
-      const closureReason = dayClosures[0]?.reason ?? null;
+      const fullDayClosure = closures.find((c) => closureCoversWholeDay(c.starts_at, c.ends_at, date));
 
       result.push({
         date,
         slots: allDaySlots,
-        isClosed: !hours?.is_open ? true : isClosed,
-        closureReason: hours?.is_open ? closureReason : 'Closed',
+        isClosed: !hours?.is_open || !!fullDayClosure,
+        closureReason: hours?.is_open ? (fullDayClosure?.reason ?? null) : 'Closed',
       });
     }
     return result;
