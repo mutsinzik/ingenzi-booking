@@ -181,6 +181,15 @@ export function AvailabilityCalendar({ onSelectSlot }: CalendarProps) {
     }
   };
 
+  const closureLabelFor = (startsAt: string): string | null => {
+    const t = new Date(startsAt).getTime();
+    const closure = closures.find(
+      (c) => new Date(c.starts_at).getTime() <= t && t < new Date(c.ends_at).getTime(),
+    );
+    if (!closure) return null;
+    return closure.reason ?? 'Closed';
+  };
+
   const isSlotSelected = (slot: Slot): boolean => {
     if (!selectedStart || !selectedEnd) return false;
     const slotStart = new Date(slot.starts_at).getTime();
@@ -308,6 +317,7 @@ export function AvailabilityCalendar({ onSelectSlot }: CalendarProps) {
                   const selected = isSlotSelected(slot);
                   const isPast = new Date(slot.ends_at).getTime() <= Date.now();
                   const isBooked = !slot.is_available && !isPast;
+                  const closureLabel = isBooked && !bookers.has(slot.starts_at) ? closureLabelFor(slot.starts_at) : null;
                   return (
                     <button
                       key={slot.starts_at}
@@ -336,6 +346,9 @@ export function AvailabilityCalendar({ onSelectSlot }: CalendarProps) {
                           <span className="truncate text-gray-500">{bookers.get(slot.starts_at)?.booker_name}</span>
                         </div>
                       )}
+                      {closureLabel && !selected && (
+                        <div className="text-[10px] leading-tight truncate text-gray-500">{closureLabel}</div>
+                      )}
                     </button>
                   );
                 })
@@ -354,6 +367,7 @@ export function AvailabilityCalendar({ onSelectSlot }: CalendarProps) {
           slotsError={slotsError}
           onSelectSlot={onSelectSlot}
           bookers={bookers}
+          closureLabelFor={closureLabelFor}
           maxBookingMs={maxBookingMs}
           maxHours={settings?.max_hours_per_booking ?? 4}
         />
@@ -363,7 +377,7 @@ export function AvailabilityCalendar({ onSelectSlot }: CalendarProps) {
 }
 
 function MobileDayList({
-  days, tz, slotsLoading, slotsError, onSelectSlot, bookers, maxBookingMs, maxHours,
+  days, tz, slotsLoading, slotsError, onSelectSlot, bookers, closureLabelFor, maxBookingMs, maxHours,
 }: {
   days: DayData[];
   tz: string;
@@ -371,6 +385,7 @@ function MobileDayList({
   slotsError: string | null;
   onSelectSlot: (startsAt: string, endsAt: string) => void;
   bookers: Map<string, SlotBooker>;
+  closureLabelFor: (startsAt: string) => string | null;
   maxBookingMs: number;
   maxHours: number;
 }) {
@@ -532,6 +547,7 @@ function MobileDayList({
             const isStart = mobileStart === slot.starts_at;
             const isPast = new Date(slot.ends_at).getTime() <= Date.now();
             const isBooked = !slot.is_available && !isPast;
+            const closureLabel = isBooked && !bookers.has(slot.starts_at) ? closureLabelFor(slot.starts_at) : null;
             return (
               <button
                 key={slot.starts_at}
@@ -556,6 +572,9 @@ function MobileDayList({
                       <User size={11} className="flex-shrink-0" />
                       <span className="truncate">{bookers.get(slot.starts_at)?.booker_name}</span>
                     </div>
+                  )}
+                  {closureLabel && !inRange && (
+                    <div className="mt-0.5 text-xs text-gray-500 truncate">{closureLabel}</div>
                   )}
                 </div>
                 <span className={`text-xs font-medium flex-shrink-0 ml-2 ${
